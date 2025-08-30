@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Security Scan Report - {{ target }}</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.4; }
+        h1 { color: #333; border-bottom: 2px solid #333; padding-bottom: 10px; }
+        h2 { color: #555; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-top: 25px; }
+        .summary-box { border: 1px solid #ccc; padding: 15px; margin-bottom: 20px; background-color: #f9f9f9; }
+        .high-risk { color: #d9534f; font-weight: bold; }
+        .medium-risk { color: #f0ad4e; font-weight: bold; }
+        .low-risk { color: #5bc0de; }
+        .info-risk { color: #777; }
+        .vuln-item { margin-bottom: 15px; padding: 10px; border-left: 4px solid; }
+        .tech-list { list-style-type: none; padding: 0; }
+        .tech-list li { display: inline-block; background: #e9ecef; padding: 5px 10px; margin: 5px; border-radius: 3px; }
+        .risk-high { border-left-color: #d9534f; background-color: #fdf7f7; }
+        .risk-medium { border-left-color: #f0ad4e; background-color: #fefaf1; }
+        .risk-low { border-left-color: #5bc0de; background-color: #f4f8fa; }
+        .risk-informational { border-left-color: #777; background-color: #f8f9fa; }
+        .note { font-style: italic; color: #6c757d; margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <h1>Security Scan Report</h1>
+    <p><strong>Target:</strong> {{ target }}</p>
+    <p><strong>Scan Date:</strong> {{ scan_date }}</p>
+    
+    <h2>Framework & Technology Detection</h2>
+    <ul class="tech-list">
+        {% for tech in frameworks.technologies %}
+        <li>{{ tech.name }}{% if tech.version %} (v{{ tech.version }}){% endif %}</li>
+        {% endfor %}
+    </ul>
+    
+    <h2>Vulnerability Summary</h2>
+    <div class="summary-box">
+        <p><span class="high-risk">High: {{ vulnerabilities.summary.high }}</span> | 
+           <span class="medium-risk">Medium: {{ vulnerabilities.summary.medium }}</span> | 
+           <span class="low-risk">Low: {{ vulnerabilities.summary.low }}</span> | 
+           Informational: {{ vulnerabilities.summary.informational }}</p>
+        {% if vulnerabilities.summary.note %}
+        <p class="note">{{ vulnerabilities.summary.note }}</p>
+        {% endif %}
+    </div>
+    
+    <h2>Vulnerability Details</h2>
+    {% for vuln in vulnerabilities.vulnerabilities %}
+    <div class="vuln-item risk-{{ vuln.risk }}">
+        <h3>{{ vuln.name }} <small>({{ vuln.risk|upper }})</small></h3>
+        <p><strong>URL:</strong> {{ vuln.url }}</p>
+        <p><strong>Description:</strong> {{ vuln.description }}</p>
+        <p><strong>Solution:</strong> {{ vuln.solution }}</p>
+        {% if vuln.evidence %}<p><strong>Evidence:</strong> <code>{{ vuln.evidence }}</code></p>{% endif %}
+    </div>
+    {% endfor %}
+</body>
+</html>
