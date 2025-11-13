@@ -6,9 +6,14 @@ class ZAPScanner:
     def __init__(self, zap_api_key='l4rmtd48i116at4vg64fs7fnce', zap_proxy='http://localhost:8080'):
         self.zap_proxy = zap_proxy
         self.api_key = zap_api_key
+        self.session_name = f"scan_{int(time.time())}"  # Unique session name
         
         # Test the connection with different approaches
         self.zap = self._connect_to_zap()
+        
+        # Create a new session for this scan
+        if self.zap:
+            self._create_new_session()
     
     def _connect_to_zap(self):
         """Try different connection methods to ZAP"""
@@ -34,6 +39,29 @@ class ZAPScanner:
         print("[ZAP] Please ensure ZAP is running with the API enabled")
         return None
     
+    def _create_new_session(self):
+        """Create a new session for this scan"""
+        try:
+            self.zap.core.new_session(name=self.session_name, overwrite=True)
+            print(f"[ZAP] Created new session: {self.session_name}")
+        except Exception as e:
+            print(f"[ZAP] Warning: Could not create new session: {e}")
+    
+    def _discard_session(self):
+        """Discard the current session"""
+        try:
+            # Check if session exists before trying to remove it
+            current_session = self.zap.core.session_location
+            if current_session and self.session_name in current_session:
+                self.zap.core.new_session(name="default", overwrite=True)
+                print(f"[ZAP] Discarded session: {self.session_name}")
+            else:
+                # Create a new default session to effectively discard the current one
+                self.zap.core.new_session(name="default", overwrite=True)
+                print("[ZAP] Reset to default session")
+        except Exception as e:
+            print(f"[ZAP] Warning: Could not discard session: {e}")
+    
     def scan(self, target_url):
         # If ZAP is not available, return error
         if self.zap is None:
@@ -58,6 +86,8 @@ class ZAPScanner:
             try:
                 scan_id = self.zap.spider.scan(url=target_url)
             except Exception as e:
+                # Discard session even on error
+                self._discard_session()
                 return {
                     "error": f"ZAP spider failed to start: {str(e)}",
                     "vulnerabilities": [],
@@ -127,6 +157,8 @@ class ZAPScanner:
                 return results
                 
             except Exception as e:
+                # Discard session on error
+                self._discard_session()
                 return {
                     "error": f"Failed to get alerts from ZAP: {str(e)}",
                     "vulnerabilities": [],
@@ -140,6 +172,8 @@ class ZAPScanner:
                 }
             
         except Exception as e:
+            # Discard session on error
+            self._discard_session()
             return {
                 "error": f"ZAP scan failed: {str(e)}",
                 "vulnerabilities": [],
@@ -150,6 +184,9 @@ class ZAPScanner:
                     "informational": 0
                 }
             }
+        finally:
+            # Always discard session when done, whether successful or not
+            self._discard_session()
     
     def _configure_zap(self):
         """Configure ZAP for better scanning performance"""
@@ -203,4 +240,3 @@ class ZAPScanner:
             })
         
         return formatted
-
