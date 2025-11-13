@@ -26,9 +26,43 @@ class ReportGenerator:
     
     def process_vulnerabilities(self, vulnerability_data):
         """Process vulnerabilities to prioritize and summarize them"""
+        # Handle scan errors
         if "error" in vulnerability_data:
-            return vulnerability_data
+            return {
+                "vulnerabilities": [],
+                "summary": {
+                    "high": 0,
+                    "medium": 0,
+                    "low": 0,
+                    "informational": 0,
+                    "note": f"Scan Error: {vulnerability_data['error']}"
+                }
+            }
             
+        # Ensure the data structure has the expected format
+        if "vulnerabilities" not in vulnerability_data:
+            vulnerability_data["vulnerabilities"] = []
+        
+        if "summary" not in vulnerability_data:
+            # Create summary from vulnerabilities if not provided
+            summary = {
+                "high": 0,
+                "medium": 0,
+                "low": 0,
+                "informational": 0
+            }
+            for vuln in vulnerability_data["vulnerabilities"]:
+                risk = vuln.get("risk", "informational").lower()
+                if risk == 'high':
+                    summary["high"] += 1
+                elif risk == 'medium':
+                    summary["medium"] += 1
+                elif risk == 'low':
+                    summary["low"] += 1
+                else:
+                    summary["informational"] += 1
+            vulnerability_data["summary"] = summary
+        
         # Sort vulnerabilities by risk level (High > Medium > Low > Informational)
         risk_order = {"high": 0, "medium": 1, "low": 2, "informational": 3}
         vulnerabilities = vulnerability_data.get("vulnerabilities", [])
@@ -101,9 +135,35 @@ class ReportGenerator:
         
         # Convert to PDF
         filename = f"{output_name}.pdf"
-        HTML(html_file).write_pdf(filename)
+        try:
+            # Suppress fontconfig warnings on Windows
+            import warnings
+            import logging
+            
+            # Suppress WeasyPrint and fontconfig warnings
+            warnings.filterwarnings("ignore", category=UserWarning)
+            warnings.filterwarnings("ignore", category=DeprecationWarning)
+            
+            # Suppress fontconfig logging
+            logging.getLogger('fontTools').setLevel(logging.ERROR)
+            logging.getLogger('weasyprint').setLevel(logging.ERROR)
+            logging.getLogger('PIL').setLevel(logging.ERROR)
+            
+            # Set environment variable to suppress fontconfig errors
+            import os
+            os.environ['FONTCONFIG_PATH'] = 'C:\\Windows\\Fonts'  # Point to Windows fonts directory
+            
+            HTML(html_file).write_pdf(filename)
+            print("[+] PDF report generated successfully")
+            
+        except Exception as e:
+            print(f"[-] PDF generation failed: {e}")
+            print("[+] Generating HTML report instead")
+            filename = self.generate_html_report(data, output_name)
         
-        # Remove temporary HTML file
-        os.remove(html_file)
+        # Remove temporary HTML file if it exists
+        if os.path.exists(html_file) and filename.endswith('.pdf'):
+            os.remove(html_file)
         
         return filename
+

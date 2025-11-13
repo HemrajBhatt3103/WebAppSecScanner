@@ -60,9 +60,19 @@ def main():
     framework_data = whatweb_scanner.scan(target_url)
     
     # Run OWASP ZAP for vulnerability scanning
+        # Run OWASP ZAP for vulnerability scanning
     print("[+] Running vulnerability scan with OWASP ZAP...")
     zap_scanner = ZAPScanner()
+    
+    # Try scanning - the scanner will handle timeouts gracefully
     vulnerability_data = zap_scanner.scan(target_url)
+    
+    # Check if we got any results
+    if vulnerability_data.get("vulnerabilities"):
+        print(f"[+] Found {len(vulnerability_data['vulnerabilities'])} vulnerabilities")
+    elif "error" in vulnerability_data:
+        print(f"[!] ZAP Scan Issues: {vulnerability_data['error']}")
+        print("[+] Continuing with available results...")
     
     # Generate report
     print("[+] Generating report...")
@@ -90,3 +100,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
